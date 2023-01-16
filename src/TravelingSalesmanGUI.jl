@@ -1,5 +1,11 @@
 module TravelingSalesmanGUI
 
-# Write your package code here.
+include("Constants.jl")
+
+export x, greet, greet2, width
+
+x = 10
+greet() = print("Hello World!")
+greet2() = print("Hello World!!!!")
 
 end
