@@ -1,0 +1,7 @@
+name = "TravelingSalesmanGUI"
+uuid = "569cb50a-c034-4b2b-9494-92919b2858e0"
+authors = ["povolji2", "svadlmat"]
+version = "0.1.0"
+
+[compat]
+julia = "1.8.1"
