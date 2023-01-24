@@ -27,5 +27,17 @@
             "g": [8, 2],
             "h": [9, 10]
         }
+    },
+    "gui": {
+        "params": {
+            "height": 1920,
+            "width": 1080
+        },
+        "sliders": {
+            "population": [0, 100, 1],
+            "crossover": [0, 1, 0.001],
+            "elitism": [0, 1, 0.001],
+            "mutation": [0, 1, 0.001]
+        }
     }
 }
