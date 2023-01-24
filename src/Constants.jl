@@ -1,3 +1,2 @@
-size = 9
-width = 1000
-height = -500
+width = 1080
+height = 1920
