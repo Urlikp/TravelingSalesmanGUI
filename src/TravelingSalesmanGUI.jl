@@ -9,6 +9,7 @@ export GUI, get_slider_value, get_button_value, set_button_value
 mutable struct GUI
     sliders::Dict{String, Union{Int, Float64}}
     buttons::Dict{String, Bool}
+    cities::Dict{String, Any}
 
     function GUI(params::Dict)
         set_theme!(theme_dark())
@@ -24,9 +25,13 @@ mutable struct GUI
         best_label_grid = best_found_grid[1, 1] = GridLayout()
         best_axis_grid = best_found_grid[1, 2] = GridLayout()
 
-        axis = Axis(axis_grid[1, 1], title = "Traveling Salesman", xlabel = "x", ylabel = "y")
-        x = range(-10, stop=10, length = 20)
+        axis = Axis(axis_grid[1, 1], title = "Current Route", xlabel = "x", ylabel = "y")
+        x = collect(range(-10, stop=10, length = 20))
         y = x.^2
+
+        push!(x, x[1])
+        push!(y, y[1])
+
         scatterlines!(axis, x, y; markersize = 15)
         scatter!(axis, x[1], y[1], markersize = 15, color = :red)
 
@@ -81,7 +86,7 @@ mutable struct GUI
             for (index, label) in enumerate(label_labels)
         ]
 
-        best_axis = Axis(best_axis_grid[1, 1], title = "Shortest distance", xlabel = "x", ylabel = "y")
+        best_axis = Axis(best_axis_grid[1, 1], title = "Best route", xlabel = "x", ylabel = "y")
 
         x = range(-10, stop=10, length = 20)
         y = abs.(x)
@@ -89,7 +94,7 @@ mutable struct GUI
         scatter!(best_axis, x[1], y[1], markersize = 15, color = :red)
 
         sc = display(figure);
-        new(sliders, buttons)
+        new(sliders, buttons, params["cities"])
     end
 end
 
@@ -103,6 +108,10 @@ end
 
 function set_button_value(gui::GUI, button_label::String)
     gui.buttons[button_label] = false
+end
+
+function update_route(gui::GUI, ordered_cities::Array{String}, distance::Float64)
+    
 end
 
 end
