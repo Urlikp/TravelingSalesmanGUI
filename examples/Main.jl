@@ -13,14 +13,17 @@ params = Dict(
         )
     ),  
     "cities" => Dict(
-        "a" => [1, 2],
-        "b" => [4, 1],
-        "c" => [1, 8],
-        "d" => [14, 1],
-        "e" => [4, 10],
-        "f" => [6, 7],
-        "g" => [8, 2],
-        "h" => [9, 10]
+        "start" => "h",
+        "position" => Dict(
+            "a" => [1, 2],
+            "b" => [4, 1],
+            "c" => [1, 8],
+            "d" => [14, 1],
+            "e" => [4, 10],
+            "f" => [6, 7],
+            "g" => [8, 2],
+            "h" => [9, 10]
+        )
     ),
     "gui" => Dict(
         "params" => Dict(
@@ -36,12 +39,33 @@ params = Dict(
     )
 )
 
+data_2 = Dict(
+    "iteration" => 1,
+    "best" => "h-a-b-c-d-e-f-g-h",
+    "distance" => 3
+)
+
+data = Dict(
+    "iteration" => 2,
+    "best" => "h-e-f-c-a-b-g-d-h",
+    "distance" => 2
+)
+
 test = GUI(params)
+# println(test.graphics.sliders)
+
+sleep(5)
+
+update_gui(test, data)
+
+sleep(5)
+
+update_gui(test, data_2)
 
 # for i in 1:5
-#     println(test.sliders)
-#     testovic = get_slider_value(test, "Step")
-#     println("New value of Step is $testovic")
+#     println(test.graphics.sliders)
+#     testovic = get_slider_values(test)
+#     println(testovic)
 #     testik = get_button_value(test, "Play")
 #     println("New value of Play is $testik")
 
