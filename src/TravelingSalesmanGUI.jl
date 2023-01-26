@@ -4,25 +4,29 @@ using JSON, GLMakie
 
 include("Constants.jl")
 
-export GUI, get_slider_values, get_button_values, set_button_value, update_gui
+export GUI, get_sliders, get_buttons, set_button_value, set_button_values, update_gui
 
 mutable struct MyGraphics
     sliders::Dict{String, Union{Int, Float64}} # Slider buttons (mapping label to value)
     buttons::Dict{String, Bool} # Buttons (mapping label to on/off bool)
     axis::Makie.Axis   # Axis containing current best found cities sequence
-    lines::Any  # Current best found cities sequence
-    best_axis_grid::Any # Grid containing overall best found cities sequence
+    lines::Union{Makie.Lines, Nothing}  # Lines containing current best found cities sequence
     best_axis::Makie.Axis  # Axis containing overall best found cities sequence
-    best_lines::Any # Overall best found cities sequence
-    best_label_grid::Any  # Info about run
+    best_lines::Union{Makie.Lines, Nothing} # Lines containing overall best found cities sequence
+    info_label_values::Dict{String, Observable}    # Info labels containing information about current & overall best found cities sequence
+end
+
+mutable struct MyData
+    cities::Dict{String, Any}   # City coordinates
+    best_entry::Union{Dict{String, Any}, Nothing}   # Information about overall best iteration
 end
 
 mutable struct GUI
-    cities::Dict{String, Any}
-    best_entry::Union{Dict{String, Any}, Nothing}
+    data::MyData
     graphics::MyGraphics
 
     function GUI(params::Dict)
+        # ------------------------- Figure --------------------------
         set_theme!(theme_dark())
         resolution = (params["gui"]["params"]["height"], params["gui"]["params"]["width"])
         figure = Figure(resolution = resolution)
@@ -30,6 +34,7 @@ mutable struct GUI
         name_label = "Traveling Salesman - " * params["problem_name"] * " - " * params["algorithm"]["name"]
         figure[0, 1:2] = Label(figure, name_label, fontsize = 30)
 
+        # -------------------------- Grids --------------------------
         axis_grid = figure[1, 1] = GridLayout()
         button_grid = figure[2, 1:2] = GridLayout()
         slider_grid = figure[3, 1:2] = GridLayout()
@@ -69,7 +74,7 @@ mutable struct GUI
         text!(axis, Point.(x_coords .+ text_offset, y_coords .+ text_offset), text = route_without_start)
         text!(axis, Point.(x_start + text_offset, y_start + text_offset), text = starting_city)
 
-        # ---------------------- Sliders ----------------------
+        # ------------------------- Sliders -------------------------
         sliders_array::Array{Any} = []
 
         for (key, value) in params["gui"]["sliders"]
@@ -101,45 +106,55 @@ mutable struct GUI
             end
 
             on(slider_observables[i]) do value
-                # println("New value of $(slider_labels[i]) is $value")
+                println("New value of $(slider_labels[i]) is $value")
                 sliders[slider_labels[i]] = value
-                # println("$(sliders) == $value")
             end
         end
 
-        # ---------------------- Buttons ----------------------
-        button_labels = ["Play", "Pause", "Clear & Reset", "Step", "Default"]
-        button_values = falses(length(button_labels))
-
+        # ------------------------- Buttons -------------------------
         button_objects = [
             Button(button_grid[1, index], label = label)
-            for (index, label) in enumerate(button_labels)
+            for (index, label) in enumerate(BUTTON_LABELS)
         ]
 
-        buttons = Dict(button_labels .=> button_values)
+        buttons = Dict{String, Bool}(
+            BUTTON_LABELS .=> falses(length(BUTTON_LABELS))
+        )
 
-        for i in eachindex(button_labels)
+        for i in eachindex(BUTTON_LABELS)
             on(button_objects[i].clicks) do click
-                buttons[button_labels[i]] = true
-                # println("New value of $(button_labels[i]) is $(buttons[button_labels[i]])")
+                buttons[BUTTON_LABELS[i]] = true
+
+                if BUTTON_LABELS[i] == "Default"
+                    set_slider_default_values(params["algorithm"]["params"], collect(keys(params["gui"]["sliders"])), slider_objects.sliders)
+                elseif BUTTON_LABELS[i] == "Clear & Reset"
+                    set_slider_default_values(params["algorithm"]["params"], collect(keys(params["gui"]["sliders"])), slider_objects.sliders)
+                    clear_routes(graphics, data)
+                end
+                
+                println("New value of $(BUTTON_LABELS[i]) is $(buttons[BUTTON_LABELS[i]])")
             end
         end
 
-        # ---------------------- Labels ----------------------
-        label_labels = [
-            "Current iteration: ", 
-            "Current shortest distance: ", 
-            "Current best: ", 
-            "Best distance: ",
-            "Best: "
+        # ------------------------- Labels --------------------------
+        LABEL_VALUES = [
+            Observable(0),
+            Observable(0.0),
+            Observable("---"),
+            Observable(0.0),
+            Observable("---")
         ]
 
         info_labels = [
-            Label(best_label_grid[index, 1], label)
-            for (index, label) in enumerate(label_labels)
+            Label(best_label_grid[index, 1], @lift(label * string($(value))))
+            for (index, (label, value)) in enumerate(zip(LABEL_LABELS, LABEL_VALUES))
         ]
 
-        # ---------------------- Best Route ----------------------
+        info_label_values = Dict{String, Observable}(
+            LABEL_LABELS .=> LABEL_VALUES
+        )
+
+        # ----------------------- Best Route ------------------------
         best_axis = Axis(best_axis_grid[1, 1], title = "Best route", xlabel = "x", ylabel = "y")
 
         xlims!(best_axis, x_min, x_max)
@@ -150,19 +165,21 @@ mutable struct GUI
         text!(best_axis, Point.(x_coords .+ text_offset, y_coords .+ text_offset), text = route_without_start)
         text!(best_axis, Point.(x_start + text_offset, y_start + text_offset), text = starting_city)
 
+        # ---------------------- Constructors -----------------------
         sc = display(figure)
 
-        graphics = MyGraphics(sliders, buttons, axis, nothing, best_axis_grid, best_axis, nothing, best_label_grid)
+        graphics = MyGraphics(sliders, buttons, axis, nothing, best_axis, nothing, info_label_values)
+        data = MyData(params["cities"]["position"], nothing)
 
-        new(params["cities"]["position"], nothing, graphics)
+        new(data, graphics)
     end
 end
 
-function get_slider_values(gui::GUI)::Dict{String, Union{Int, Float64}}
+function get_sliders(gui::GUI)::Dict{String, Union{Int, Float64}}
     return gui.graphics.sliders
 end
 
-function get_button_values(gui::GUI)::Dict{String, Bool}
+function get_buttons(gui::GUI)::Dict{String, Bool}
     return gui.graphics.buttons
 end
 
@@ -170,26 +187,62 @@ function set_button_value(gui::GUI, button_label::String)
     gui.graphics.buttons[button_label] = false
 end
 
-function update_gui(gui::GUI, data::Dict{String, Any})
-    ordered_cities = split(data["best"], "-")
-    
-    if !isnothing(gui.graphics.lines)
-        delete!(gui.graphics.axis.scene, gui.graphics.lines)
+function set_button_values(gui::GUI)
+    gui.graphics.buttons = Dict{String, Bool}(
+        BUTTON_LABELS .=> falses(length(BUTTON_LABELS))
+    )
+end
+
+function set_slider_default_values(default_sliders::Dict{String, Real}, slider_labels::Vector{String}, sliders::Vector{Makie.Slider})
+    for i in eachindex(slider_labels)
+        set_close_to!(sliders[i + 1], default_sliders[slider_labels[i]])
+    end
+end
+
+function clear_routes(graphics::MyGraphics, data::MyData)
+    delete!(graphics.axis.scene, graphics.lines)
+    delete!(graphics.best_axis.scene, graphics.best_lines)
+
+    graphics.lines = nothing
+    graphics.best_lines = nothing
+
+    graphics.info_label_values["Current iteration: "][] = 0
+    graphics.info_label_values["Current shortest distance: "][] = 0.0
+    graphics.info_label_values["Current best: "][] = "---"
+    graphics.info_label_values["Best distance: "][] = 0.0
+    graphics.info_label_values["Best: "][] = "---"
+
+    data.best_entry = nothing
+end
+
+function update_route(axis::Makie.Axis, lines::Union{Makie.Lines, Nothing}, x_coords::Vector{Int}, y_coords::Vector{Int})
+    if !isnothing(lines)
+        delete!(axis.scene, lines)
     end
 
-    x_coords = [gui.cities[label][1] for label in ordered_cities]
-    y_coords = [gui.cities[label][2] for label in ordered_cities]
+    return lines!(axis, x_coords, y_coords, color = :green)
+end
 
-    gui.graphics.lines = lines!(gui.graphics.axis, x_coords, y_coords, color = :green)
+function update_gui(gui::GUI, data::Dict{String, Any})
+    ordered_cities = split(data["best"], "-")
 
-    if isnothing(gui.best_entry) || data["distance"] < gui.best_entry["distance"]
-        gui.best_entry = data
+    x_coords = [gui.data.cities[label][1] for label in ordered_cities]
+    y_coords = [gui.data.cities[label][2] for label in ordered_cities]
+    
+    gui.graphics.lines = update_route(gui.graphics.axis, gui.graphics.lines, x_coords, y_coords)
 
-        if !isnothing(gui.graphics.best_lines)
-            delete!(gui.graphics.best_axis.scene, gui.graphics.best_lines)
-        end
+    gui.graphics.info_label_values["Current iteration: "][] += 1
+    gui.graphics.info_label_values["Current shortest distance: "][] = data["distance"]
+    gui.graphics.info_label_values["Current best: "][] = data["best"]
+    
 
-        gui.graphics.best_lines = lines!(gui.graphics.best_axis, x_coords, y_coords, color = :green)
+    if isnothing(gui.data.best_entry) || data["distance"] < gui.data.best_entry["distance"]
+        gui.data.best_entry = data
+
+        gui.graphics.best_lines = update_route(gui.graphics.best_axis, gui.graphics.best_lines, x_coords, y_coords)
+
+        gui.graphics.info_label_values["Best distance: "][] = data["distance"]
+        gui.graphics.info_label_values["Best: "][] = data["best"]
     end
 end
 

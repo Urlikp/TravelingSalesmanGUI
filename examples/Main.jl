@@ -53,14 +53,21 @@ data = Dict(
 
 test = GUI(params)
 # println(test.graphics.sliders)
+# println(get_buttons(test))
+println(get_sliders(test))
 
 sleep(5)
 
 update_gui(test, data)
+# println(get_buttons(test))
 
 sleep(5)
 
 update_gui(test, data_2)
+println(get_sliders(test))
+# println(get_buttons(test))
+# set_button_values(test)
+# println(get_buttons(test))
 
 # for i in 1:5
 #     println(test.graphics.sliders)
