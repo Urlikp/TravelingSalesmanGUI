@@ -13,3 +13,14 @@ const LABEL_LABELS = [
     "Best distance: ",
     "Best: "
 ]
+
+const LABEL_STARTING_VALUES = [
+    0,
+    0.0,
+    "---",
+    0.0,
+    "---"
+]
+
+const AXIS_OFFSET = 2
+const TEXT_OFFSET = 0.1
