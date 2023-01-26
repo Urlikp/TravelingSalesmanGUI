@@ -1,6 +1,6 @@
 module TravelingSalesmanGUI
 
-using JSON, GLMakie
+using GLMakie
 
 include("Constants.jl")
 
@@ -59,7 +59,7 @@ mutable struct GUI
                     clear_routes(graphics, data)
                 end
                 
-                println("New value of $(BUTTON_LABELS[i]) is $(buttons[BUTTON_LABELS[i]])")
+                # println("New value of $(BUTTON_LABELS[i]) is $(buttons[BUTTON_LABELS[i]])")
             end
         end
 
@@ -167,7 +167,7 @@ function init_sliders(params::Dict{String, Any}, slider_grid::Makie.GridLayout):
         end
 
         on(slider_observables[i]) do value
-            println("New value of $(slider_labels[i]) is $value")
+            # println("New value of $(slider_labels[i]) is $value")
             sliders[slider_labels[i]] = value
         end
     end
